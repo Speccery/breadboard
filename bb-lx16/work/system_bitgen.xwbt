@@ -1,0 +1,8 @@
+INTSTYLE=ise
+INFILE=C:\Users\Erik Piehl\Dropbox\Omat\trunk\breadboard\bb-lx16\work\system.ncd
+OUTFILE=C:\Users\Erik Piehl\Dropbox\Omat\trunk\breadboard\bb-lx16\work\system.bit
+FAMILY=Spartan6
+PART=xc6slx16-2ftg256
+WORKINGDIR=C:\Users\Erik Piehl\Dropbox\Omat\trunk\breadboard\bb-lx16\work
+LICENSE=WebPack
+USER_INFO=211059439_0_0_754
