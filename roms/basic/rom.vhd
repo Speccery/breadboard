@@ -18,14 +18,13 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity rom is
+entity testrom is
     Port ( clk : in  STD_LOGIC;
-           addr : in  STD_LOGIC_VECTOR (14 downto 0);
-			  nCS : in STD_LOGIC;	-- not used
-           do : out  STD_LOGIC_VECTOR (15 downto 0));
-end rom;
+           addr : in  STD_LOGIC_VECTOR (11 downto 0);
+           data_out : out  STD_LOGIC_VECTOR (15 downto 0));
+end testrom;
 
-architecture Behavioral of rom is
+architecture Behavioral of testrom is
 	constant romLast : integer := 16383;
 	type pgmRomArray is array(0 to romLast) of STD_LOGIC_VECTOR (15 downto 0);
 	constant pgmRom : pgmRomArray := (  
@@ -95,31 +94,22 @@ architecture Behavioral of rom is
            ,x"0442" -- 007E
            ,x"0460" -- 0080
            ,x"0142" -- 0082
--- 8 entires, each 2 words           
-           ,x"0009" -- 0084 start of TMS9902 bitrate definition table
-           ,x"0034" -- 0086 used to be 1a
-           
+           ,x"0009" -- 0084
+           ,x"001a" -- 0086
            ,x"0012" -- 0088
-           ,x"0034" -- 008A	9600bps
-           
+           ,x"0034" -- 008A
            ,x"0023" -- 008C
-           ,x"0034" -- 008E	was 68 : 4800 bps
-           
+           ,x"0068" -- 008E
            ,x"0046" -- 0090
-           ,x"0034" -- 0092 was d0 : 2400 bps
-           
+           ,x"00d0" -- 0092
            ,x"008d" -- 0094
-           ,x"0034" -- 0096 was 1a1 : 1200 bps
-           
+           ,x"01a1" -- 0096
            ,x"0119" -- 0098
-           ,x"0034" -- 009A was 341 : 600 bps
-           
+           ,x"0341" -- 009A
            ,x"02a4" -- 009C
-           ,x"0034" -- 009E was 4d0 : 300 bps
-           
+           ,x"04d0" -- 009E
            ,x"7fff" -- 00A0
-           ,x"0034" -- 00A2 was 638 : 110 bps
-           
+           ,x"0638" -- 00A2
            ,x"0d0a" -- 00A4
            ,x"4552" -- 00A6
            ,x"524f" -- 00A8
@@ -16430,7 +16420,7 @@ begin
 	begin
 		if rising_edge(clk) then
 			addr_int := to_integer( unsigned( addr ));	-- word address
-			do <= pgmRom( addr_int );
+			data_out <= pgmRom( addr_int );
 		end if;
 	end process;
 

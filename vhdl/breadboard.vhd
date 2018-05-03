@@ -28,7 +28,8 @@ architecture system_arch of system is
    port (
       CLK  : in  std_logic;
       nCS  : in  std_logic;
-      ADDR : in  std_logic_vector (11 downto 0);
+      -- ADDR : in  std_logic_vector (11 downto 0);	-- EVM-BUG
+		ADDR : in  std_logic_vector (14 downto 0);
       DO   : out std_logic_vector (15 downto 0)
       );
    end component;
@@ -116,7 +117,7 @@ begin
    rom1: rom port map (
       CLK  => CLK,
       nCS  => rom_nCS,
-      ADDR => ADDR_OUT(12 downto 1),
+      ADDR => ADDR_OUT(15 downto 1),
       DO   => DO1
    );
 
@@ -168,7 +169,7 @@ begin
       CRUCLK         => CRUCLK,
       HOLD           => '0',
       HOLDA          => open,
-      WAITS          => x"03",
+      WAITS          => x"00", -- x"03",
       STUCK          => open
       );
 

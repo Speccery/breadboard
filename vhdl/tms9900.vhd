@@ -363,7 +363,7 @@ begin
 						rd <= '1';
 						cpu_state <= do_read0;
 					when do_read0 => 
-						cpu_state <= do_read1; 
+						cpu_state <= do_read3; -- EPEP BUGBUG now save two clocks skip two states
 						as <= '0';
 						delay_count <= waits;	-- used to be zero (i.e. not assigned)
 					when do_read1 => 
@@ -395,7 +395,7 @@ begin
 						cpu_state <= do_write0;
 
 					when do_write0 => 
-						cpu_state <= do_write1; 
+						cpu_state <= do_write3; 	-- EPEP BUGBUG skip next two states
 						as <= '0';
 						if waits(7 downto 1) = "0000000" then
 							delay_count <= "00000010"; -- minimum value
