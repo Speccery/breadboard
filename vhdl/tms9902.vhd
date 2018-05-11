@@ -24,6 +24,11 @@ port (
    CRUCLK   : in  std_logic;
    XOUT     : out std_logic;
    RIN      : in  std_logic;
+	
+	DEBUG_RX_SHIFT : out std_logic;
+	DEBUG_RX_1    : out std_logic;
+	DEBUG_RX_2    : out std_logic;
+	
    S        : in  std_logic_vector(4 downto 0)
    );
 end;
@@ -185,8 +190,8 @@ architecture tms9902_arch of tms9902 is
    signal nrts2  : std_logic;
 
    -- clock divider and internal clock
-   signal clkctr_q : unsigned(5 downto 0) := "000000";
-   signal clkctr_d : unsigned(5 downto 0);
+   signal clkctr_q : unsigned(7 downto 0) := "00000000";
+   signal clkctr_d : unsigned(7 downto 0);
    signal bitclk   : std_logic;
 
 begin
@@ -198,6 +203,10 @@ begin
    nINT <= not intr;
    XOUT <= xout2;
    
+	DEBUG_RX_SHIFT <= sig_rsr_shift;
+	DEBUG_RX_1		<= '1' when rcvFSM_q.state = START1 else '0';
+	DEBUG_RX_2		<= '1' when rcvFSM_q.state = START else '0';
+	
    -- Convenience signals:
    --   xout2 is used both as output and input signal (XOUT is out only)
    --   xout2 is merged from xmtFSM (start, parity, etc.) and the xmt shift register
@@ -224,13 +233,14 @@ begin
          clkctr_q <= clkctr_d;
       end if;
    end process;
-   bitclk <= '1' when clkctr_q="000000" else '0';
+   bitclk <= '1' when clkctr_q="00000000" else '0';
 
    clkdiv_c: process(CLK, clkctr_q)
-   variable v : unsigned(5 downto 0);
+   variable v : unsigned(7 downto 0);
    begin
       v := clkctr_q + 1;
-      if v=to_unsigned(49, v'length) then v:="111111"; end if; -- CLK is 50MHz, div by 50 (0 to 49) 
+		-- clock now set to 100MHz
+      if v=to_unsigned(49, v'length) then v:="11111111"; end if; -- when CLK is 50MHz, div by 50 (0 to 49) 
       clkctr_d <= v;
    end process;
 
@@ -736,6 +746,7 @@ begin
       
       if sig_rhb_reset='1' or z='1' then
          v := unsigned(rdr_q(9 downto 0)&"000");
+			if sig_rhb_reset='1' then z := '0'; end if;	-- EPEP testing
       elsif bitclk='1' then
          v := v - n;
       end if;
@@ -767,9 +778,9 @@ begin
          when others => rbits := "01010";
       end case;
 
-      if sig_rhbctr_iszero='1' then
-         v.bitctr := v.bitctr - 1;
-      end if;
+--      if sig_rhbctr_iszero='1' then
+--         v.bitctr := v.bitctr - 1;
+--      end if;
 
       if sig_reset='1' or sig_rienb='1' then
          v.rbrl  := '0';
@@ -793,10 +804,13 @@ begin
          end if;
          
       elsif sig_rhbctr_iszero='1' then
+		
+			v.bitctr := v.bitctr - 1;
+		
          case v.state is
 
             when START =>
-               if v.bitctr=0 then
+               if v.bitctr="00000" then
                   if rin2='1' then
                      v.state := IDLE;
                   else
@@ -813,7 +827,7 @@ begin
                   v.rfbd := '1';
                   rsr_shift := '1';
                end if;
-               if v.bitctr=0 then
+               if v.bitctr="00000" then
                   v.bitctr := "00010";
                   if ctl_q.penb='1' then
                      v.state  := PARITY;
@@ -830,7 +844,7 @@ begin
                end if; 
             
             when STOP =>
-               if v.bitctr=0 then
+               if v.bitctr="00000" then
                   v.rover  := v.rbrl;
                   v.rper   := v.par;
                   v.rfer   := not rin2;

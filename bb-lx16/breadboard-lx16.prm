@@ -1,0 +1,17 @@
+PROMGEN: Xilinx Prom Generator P.20131013
+Copyright (c) 1995-2013 Xilinx, Inc.  All rights reserved.
+
+promgen -w -p mcs -c FF -o "C:\Users\Erik Piehl\Dropbox\Omat\trunk\breadboard\bb-lx16//breadboard-lx16.mcs" -s 1024 -u 0 "C:\Users\Erik Piehl\Dropbox\Omat\trunk\breadboard\bb-lx16\work\system.bit" -spi 
+
+PROM C:\Users\Erik Piehl\Dropbox\Omat\trunk\breadboard\bb-lx16\breadboard-lx16.prm map: Thu May 10 10:00:08 2018
+
+Calculating PROM checksum with fill value ff
+
+Format        Mcs86 (32-bit)
+Size          1024K
+PROM start    0000:0000
+PROM end      000f:ffff
+PROM checksum 09507bee
+
+        Addr1        Addr2                     Date File(s)
+    0000:0000    0007:1543     May 10 09:45:07 2018 C:/Users/Erik Piehl/Dropbox/Omat/trunk/breadboard/bb-lx16/work/system.bit

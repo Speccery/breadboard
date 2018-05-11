@@ -1,5 +1,5 @@
 --
--- FPGA breadboard
+-- FPGA breadboard for the XC6SLX16 board
 --
 -- This source code is public domain
 --
@@ -11,11 +11,16 @@ use ieee.numeric_std.all;
 entity system is
 port (
    CLKIN    : in  std_logic;  -- 50Mhz clock
-   RESET    : in  std_logic;  -- reset (SW1)
+   RESET_n  : in  std_logic;  -- reset (SW1)
+	
+	DEBUG_RX_DATA : out std_logic;
+	DEBUG_RX_SHIFT: out std_logic;
+	DEBUG_RX_1    : out std_logic;
+	DEBUG_RX_2    : out std_logic;
+	
+	
    XOUT     : out std_logic;  -- serial out
-   RIN      : in  std_logic;  -- serial in
-	LED		: out std_logic_vector(7 downto 0); -- LEDs
-   TEST     : out std_logic   -- serial out
+   RIN      : in  std_logic   -- serial in
    );
 end system;
 
@@ -58,6 +63,10 @@ architecture system_arch of system is
       CRUCLK : in   std_logic;
       XOUT   : out  std_logic;
       RIN    : in   std_logic;
+		DEBUG_RX_SHIFT : out std_logic;
+		DEBUG_RX_1    : out std_logic;
+		DEBUG_RX_2    : out std_logic;
+		
       S      : in   std_logic_vector(4 downto 0)
       );
    end component;
@@ -120,10 +129,38 @@ architecture system_arch of system is
 	
 	signal clk 			: std_logic;
 	signal clkin_buf	: std_logic;	-- buffered input clock 50MHz
+	
+	signal debug_rxs  : std_logic;
+	signal debug_toggler : std_logic;
+	signal debug_sig_rx_1 : std_logic;
+	signal debug_sig_rx_2 : std_logic;
+	
+	signal RESET		: std_logic;
 begin
 
-	mypll: xc6pll port map(CLKIN => CLKIN, CLKIN_BUF => clkin_buf, CLKOUT => CLK, LOCKED => open);
+	RESET <= not RESET_n;
+	
+	DEBUG_RX_DATA  <= RIN;
+	DEBUG_RX_SHIFT <= debug_toggler;
+	DEBUG_RX_1 <= debug_sig_rx_1;
+	DEBUG_RX_2 <= debug_sig_rx_2;
+	
+	process(RESET, CLK)
+	begin
+		if rising_edge(CLK) then
+			if RESET='1' then
+				debug_toggler <= '0';
+			else
+				if debug_rxs='1' then
+					debug_toggler <= not debug_toggler;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	
 
+	mypll: xc6pll port map(CLKIN => CLKIN, CLKIN_BUF => clkin_buf, CLKOUT => CLK, LOCKED => open);
 
    -- instantiate & connect up the ROM 'chip'
    rom1: rom port map (
@@ -145,8 +182,8 @@ begin
 
    -- instantiate & connect up the 9902 UART
    acc: tms9902 port map (
-      -- CLK    => clkin_buf,	-- using 50MHz clock
-		CLK    => CLK,	-- 160MHz clock
+      CLK    => clkin_buf,	-- using 50MHz clock
+		-- CLK    => CLK,	-- 100MHz clock
       nRTS   => rts_to_cts,
       nDSR   => '0',
       nCTS   => rts_to_cts,
@@ -157,6 +194,9 @@ begin
       CRUCLK => CRUCLK,
       XOUT   => xout2,
       RIN    => RIN,
+		DEBUG_RX_SHIFT => debug_rxs,
+		DEBUG_RX_1 => debug_sig_rx_1,
+		DEBUG_RX_2 => debug_sig_rx_2,
       S      => addr_out(5 downto 1)
    );
 
@@ -197,9 +237,7 @@ begin
               DO2 when ram_nCS='0' else
               x"0000";
 
-	TEST <= xout2; -- to hook up analyzer
 	XOUT <= xout2; -- to RS232 port
 	
-	LED <= ADDR_OUT(15 downto 8);
 
 end system_arch;
