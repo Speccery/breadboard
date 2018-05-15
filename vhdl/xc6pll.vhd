@@ -53,7 +53,7 @@ begin
   dcm_sp_inst: DCM_SP
   generic map
    (CLKDV_DIVIDE          => 2.000,
-    CLKFX_DIVIDE          => 16,			-- try to multiply by 2 overall to get to 100MHz
+    CLKFX_DIVIDE          => 9,			-- try to multiply by 2 overall to get to 100MHz
     CLKFX_MULTIPLY        => 32,
     CLKIN_DIVIDE_BY_2     => FALSE,
     CLKIN_PERIOD          => 20.00,

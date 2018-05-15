@@ -13,11 +13,7 @@ port (
    CLKIN    : in  std_logic;  -- 50Mhz clock
    RESET_n  : in  std_logic;  -- reset (SW1)
 	
-	DEBUG_RX_DATA : out std_logic;
-	DEBUG_RX_SHIFT: out std_logic;
-	DEBUG_RX_1    : out std_logic;
-	DEBUG_RX_2    : out std_logic;
-	
+	RXDEBUG  : out std_logic_vector(9 downto 0);
 	
    XOUT     : out std_logic;  -- serial out
    RIN      : in  std_logic   -- serial in
@@ -63,10 +59,7 @@ architecture system_arch of system is
       CRUCLK : in   std_logic;
       XOUT   : out  std_logic;
       RIN    : in   std_logic;
-		DEBUG_RX_SHIFT : out std_logic;
-		DEBUG_RX_1    : out std_logic;
-		DEBUG_RX_2    : out std_logic;
-		
+		RXDEBUG  : out std_logic_vector(9 downto 0);
       S      : in   std_logic_vector(4 downto 0)
       );
    end component;
@@ -130,36 +123,15 @@ architecture system_arch of system is
 	signal clk 			: std_logic;
 	signal clkin_buf	: std_logic;	-- buffered input clock 50MHz
 	
-	signal debug_rxs  : std_logic;
-	signal debug_toggler : std_logic;
-	signal debug_sig_rx_1 : std_logic;
-	signal debug_sig_rx_2 : std_logic;
+	signal debug_bus : std_logic_vector(9 downto 0);
 	
 	signal RESET		: std_logic;
 begin
 
 	RESET <= not RESET_n;
-	
-	DEBUG_RX_DATA  <= RIN;
-	DEBUG_RX_SHIFT <= debug_toggler;
-	DEBUG_RX_1 <= debug_sig_rx_1;
-	DEBUG_RX_2 <= debug_sig_rx_2;
-	
-	process(RESET, CLK)
-	begin
-		if rising_edge(CLK) then
-			if RESET='1' then
-				debug_toggler <= '0';
-			else
-				if debug_rxs='1' then
-					debug_toggler <= not debug_toggler;
-				end if;
-			end if;
-		end if;
-	end process;
-	
-	
 
+	RXDEBUG <= debug_bus;
+	
 	mypll: xc6pll port map(CLKIN => CLKIN, CLKIN_BUF => clkin_buf, CLKOUT => CLK, LOCKED => open);
 
    -- instantiate & connect up the ROM 'chip'
@@ -182,8 +154,8 @@ begin
 
    -- instantiate & connect up the 9902 UART
    acc: tms9902 port map (
-      CLK    => clkin_buf,	-- using 50MHz clock
-		-- CLK    => CLK,	-- 100MHz clock
+      -- CLK    => clkin_buf,	-- using 50MHz clock
+		CLK    => CLK,	-- 100MHz clock
       nRTS   => rts_to_cts,
       nDSR   => '0',
       nCTS   => rts_to_cts,
@@ -194,9 +166,7 @@ begin
       CRUCLK => CRUCLK,
       XOUT   => xout2,
       RIN    => RIN,
-		DEBUG_RX_SHIFT => debug_rxs,
-		DEBUG_RX_1 => debug_sig_rx_1,
-		DEBUG_RX_2 => debug_sig_rx_2,
+		RXDEBUG => debug_bus,
       S      => addr_out(5 downto 1)
    );
 

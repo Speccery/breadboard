@@ -24,10 +24,8 @@ port (
    CRUCLK   : in  std_logic;
    XOUT     : out std_logic;
    RIN      : in  std_logic;
-	
-	DEBUG_RX_SHIFT : out std_logic;
-	DEBUG_RX_1    : out std_logic;
-	DEBUG_RX_2    : out std_logic;
+
+	RXDEBUG  : out std_logic_vector(9 downto 0);
 	
    S        : in  std_logic_vector(4 downto 0)
    );
@@ -193,6 +191,9 @@ architecture tms9902_arch of tms9902 is
    signal clkctr_q : unsigned(7 downto 0) := "00000000";
    signal clkctr_d : unsigned(7 downto 0);
    signal bitclk   : std_logic;
+	
+	signal debug_toggler : std_logic;
+	signal RIN_q 	: std_logic;
 
 begin
 
@@ -202,10 +203,23 @@ begin
    nRTS <= nrts2;
    nINT <= not intr;
    XOUT <= xout2;
-   
-	DEBUG_RX_SHIFT <= sig_rsr_shift;
-	DEBUG_RX_1		<= '1' when rcvFSM_q.state = START1 else '0';
-	DEBUG_RX_2		<= '1' when rcvFSM_q.state = START else '0';
+	
+	RXDEBUG(0) <= RIN;
+	RXDEBUG(1) <= debug_toggler;
+	RXDEBUG(2) <= '1' when rcvFSM_q.state = START1 else '0';
+	RXDEBUG(3) <= '1' when rcvFSM_q.state = START else '0';
+	RXDEBUG(8 downto 4) <= std_logic_vector(rcvFSM_q.bitctr);
+	RXDEBUG(9) <= '1';
+
+	process(CLK)
+	begin
+		if rising_edge(CLK) then
+			if sig_rsr_shift='1' then
+				debug_toggler <= not debug_toggler;
+			end if;
+		end if;
+	end process;
+	
 	
    -- Convenience signals:
    --   xout2 is used both as output and input signal (XOUT is out only)
@@ -240,7 +254,7 @@ begin
    begin
       v := clkctr_q + 1;
 		-- clock now set to 100MHz
-      if v=to_unsigned(49, v'length) then v:="11111111"; end if; -- when CLK is 50MHz, div by 50 (0 to 49) 
+      if v=to_unsigned(176, v'length) then v:="11111111"; end if; -- when CLK is 50MHz, div by 50 (0 to 49) 
       clkctr_d <= v;
    end process;
 
@@ -661,6 +675,11 @@ begin
 
    -- define receive data rate register and its CRU interface
    --
+	rin_reg : process(clk)
+	begin 
+		if rising_edge(clk) then RIN_q <= rin2; end if;
+	end process;
+	
    rdr_reg : process(clk)
    begin
       if rising_edge(clk) then rdr_q <= rdr_d; end if;
@@ -718,12 +737,12 @@ begin
       if rising_edge(clk) then rsr_q <= rsr_d; end if;
    end process;
 
-   rsr_cmb : process(rsr_q, rbr_q, rin2, sig_rsr_shift)
+   rsr_cmb : process(rsr_q, rbr_q, RIN_q, sig_rsr_shift)
    variable v    : std_logic_vector(7 downto 0);
    begin
       v := rsr_q;
       if sig_rsr_shift='1' then
-         v := rin2 & rsr_q(7 downto 1);
+         v := RIN_q & rsr_q(7 downto 1);
       end if;
       rsr_d <= v;
    end process;
@@ -761,7 +780,7 @@ begin
       if rising_edge(clk) then rcvFSM_q <= rcvFSM_d; end if;
    end process;
 
-   rcvFSM_cmb : process(rcvFSM_q, ctl_q, rin2, sig_reset, sig_rienb, sig_rhbctr_iszero)
+   rcvFSM_cmb : process(rcvFSM_q, ctl_q, RIN_q, sig_reset, sig_rienb, sig_rhbctr_iszero)
    variable v   : rcvFSM_type;
    variable par : std_logic;
    variable rbr_load, rsr_shift, rhb_reset : std_logic;
@@ -792,12 +811,12 @@ begin
       if v.state=IDLE then
          v.rsbd := '0';
          v.rfbd := '0';
-         if rin2='1' then
+         if RIN_q='1' then
             v.state := START1;
          end if;
 
       elsif v.state=START1 then
-         if rin2='0' then
+         if RIN_q='0' then
             v.state := START;
             v.bitctr := "00001";
             rhb_reset := '1';
@@ -810,8 +829,8 @@ begin
          case v.state is
 
             when START =>
-               if v.bitctr="00000" then
-                  if rin2='1' then
+               if v.bitctr=0 then	
+                  if RIN_q='1' then
                      v.state := IDLE;
                   else
                      v.state := BITS;
@@ -823,11 +842,11 @@ begin
 
             when BITS =>
                if v.bitctr(0)='0' then
-                  v.par := v.par xor rin2;
+                  v.par := v.par xor RIN_q;
                   v.rfbd := '1';
                   rsr_shift := '1';
                end if;
-               if v.bitctr="00000" then
+               if v.bitctr=0 then
                   v.bitctr := "00010";
                   if ctl_q.penb='1' then
                      v.state  := PARITY;
@@ -838,16 +857,16 @@ begin
 
             when PARITY =>
                if v.bitctr=0 then
-                  v.par := v.par xor rin2;
+                  v.par := v.par xor RIN_q;
                   v.state := STOP;
                   v.bitctr := "00010";
                end if; 
             
             when STOP =>
-               if v.bitctr="00000" then
+               if v.bitctr=0 then
                   v.rover  := v.rbrl;
                   v.rper   := v.par;
-                  v.rfer   := not rin2;
+                  v.rfer   := not RIN_q;
                   v.rbrl   := '1';
                   rbr_load := '1';
                   v.state  := IDLE;
