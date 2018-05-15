@@ -12,6 +12,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity tms9902 is
+generic (
+	div_to_1MHz : integer := 100	-- 100 MHz external clock by default
+);
 port (
    CLK      : in  std_logic;
    nRTS     : out std_logic;
@@ -24,9 +27,6 @@ port (
    CRUCLK   : in  std_logic;
    XOUT     : out std_logic;
    RIN      : in  std_logic;
-
-	RXDEBUG  : out std_logic_vector(9 downto 0);
-	
    S        : in  std_logic_vector(4 downto 0)
    );
 end;
@@ -192,7 +192,6 @@ architecture tms9902_arch of tms9902 is
    signal clkctr_d : unsigned(7 downto 0);
    signal bitclk   : std_logic;
 	
-	signal debug_toggler : std_logic;
 	signal RIN_q 	: std_logic;
 
 begin
@@ -203,23 +202,6 @@ begin
    nRTS <= nrts2;
    nINT <= not intr;
    XOUT <= xout2;
-	
-	RXDEBUG(0) <= RIN;
-	RXDEBUG(1) <= debug_toggler;
-	RXDEBUG(2) <= '1' when rcvFSM_q.state = START1 else '0';
-	RXDEBUG(3) <= '1' when rcvFSM_q.state = START else '0';
-	RXDEBUG(8 downto 4) <= std_logic_vector(rcvFSM_q.bitctr);
-	RXDEBUG(9) <= '1';
-
-	process(CLK)
-	begin
-		if rising_edge(CLK) then
-			if sig_rsr_shift='1' then
-				debug_toggler <= not debug_toggler;
-			end if;
-		end if;
-	end process;
-	
 	
    -- Convenience signals:
    --   xout2 is used both as output and input signal (XOUT is out only)
@@ -253,8 +235,8 @@ begin
    variable v : unsigned(7 downto 0);
    begin
       v := clkctr_q + 1;
-		-- clock now set to 100MHz
-      if v=to_unsigned(176, v'length) then v:="11111111"; end if; -- when CLK is 50MHz, div by 50 (0 to 49) 
+		-- Divide the clock down to 1 MHz from whatever external clock.
+      if v=to_unsigned((div_to_1MHz-1), v'length) then v:="11111111"; end if; -- when CLK is 50MHz, div by 50 (0 to 49) 
       clkctr_d <= v;
    end process;
 
