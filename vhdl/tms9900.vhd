@@ -24,8 +24,8 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx primitives in this code.
-library UNISIM;
-use UNISIM.VComponents.all;
+-- library UNISIM;
+-- use UNISIM.VComponents.all;
 
 -- simulation begin
 --USE STD.TEXTIO.ALL;
@@ -192,11 +192,21 @@ begin
 
 	addr_out <= addr;
 
-	my_mult : multiplier port map (
-		clk => clk,
-		a => mult_a,
-		b => mult_b,
-		p => mult_product);
+	my_mult : process(mult_a, mult_b, mult_product)
+		variable a,b : unsigned(15 downto 0);
+		variable p : unsigned(31 downto 0);
+	begin
+		a := unsigned(mult_a);
+		b := unsigned(mult_b);
+		p := a*b;
+		mult_product <= std_logic_vector(p); 
+	end process;
+
+--	my_mult : multiplier port map (
+--		clk => clk,
+--		a => mult_a,
+--		b => mult_b,
+--		p => mult_product);
 
 	cpu_debug_out <= debug_wr_data & debug_wr_addr & st & pc & pc_ir & ir;
 	
