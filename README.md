@@ -4,7 +4,8 @@ FPGA Breadboard project for TMS9900 CPU. This is a very simple system, containin
 The CPU runs at 100MHz. Currently only on-chip memory is used, i.e. the ROM and RAM are provided by the FPGA. The serial port is configured for 9600-7E2. Note that this is different from what people usually use, so here we have even parity, only 7 databits and 2 stop bits.
 
 This code runs currently on three different platforms, see pictures below. The common theme here is that all of the below can be bought from eBay at very reasonable prices. 
-** Note: all of these require external programmers, so if you're planning to acquire one of these be sure to also get a programmer.**
+
+ ** Note: all of these require external programmers, so if you're planning to acquire one of these be sure to also get a programmer. ** 
 
 ## Xilinx XC6SLX9 Mini board
 A very bare bones board. 
