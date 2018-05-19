@@ -11,9 +11,12 @@ use ieee.numeric_std.all;
 entity breadboard is
 port (
    CLKIN    : in  std_logic;  -- 50Mhz clock
-   RESET_n  : in  std_logic;  -- reset (SW1)
+   RESET_n  : in  std_logic;  -- reset (SW1)	KEY0
+	KEY1 		: in  std_logic;
+	KEY2		: in  std_logic;
 	
-	SEG  : out std_logic_vector(7 downto 0);
+	SEG  		: out std_logic_vector(7 downto 0); -- 7 segment display
+	LED  		: out std_logic_vector(3 downto 0);
 	
    XOUT     : out std_logic;  -- serial out
    RIN      : in  std_logic   -- serial in
@@ -53,6 +56,32 @@ architecture system_arch of breadboard is
 	signal debug_bus : std_logic_vector(9 downto 0);
 	
 	signal RESET		: std_logic;
+	
+	--Copyright (C) 1991-2013 Altera Corporation
+	--Your use of Altera Corporation's design tools, logic functions 
+	--and other software and tools, and its AMPP partner logic 
+	--functions, and any output files from any of the foregoing 
+	--(including device programming or simulation files), and any 
+	--associated documentation or information are expressly subject 
+	--to the terms and conditions of the Altera Program License 
+	--Subscription Agreement, Altera MegaCore Function License 
+	--Agreement, or other applicable license agreement, including, 
+	--without limitation, that your use is for the sole purpose of 
+	--programming logic devices manufactured by Altera and sold by 
+	--Altera or its authorized distributors.  Please refer to the 
+	--applicable agreement for further details.
+	component mypll
+		PORT
+		(
+			areset		: IN STD_LOGIC  := '0';
+			inclk0		: IN STD_LOGIC  := '0';
+			c0		: OUT STD_LOGIC ;
+			locked		: OUT STD_LOGIC 
+		);
+	end component;
+	
+	signal pll_locked : std_logic;
+	
 begin
 
 	RESET <= not RESET_n;
@@ -60,7 +89,10 @@ begin
 	SEG(6 downto 0)<="1111001";
 	SEG(7) <= '0';
 	
-	CLK <= CLKIN;
+	LED <= "000" & pll_locked;
+	
+	-- CLK <= CLKIN;	-- 50MHz external oscillator
+	mypll_inst: mypll port map(areset => RESET, inclk0 => CLKIN, c0 => CLK, locked => pll_locked);
 	-- mypll: entity work.xc6pll port map(CLKIN => CLKIN, CLKIN_BUF => clkin_buf, CLKOUT => CLK, LOCKED => open);
 
    -- instantiate & connect up the ROM 'chip'
