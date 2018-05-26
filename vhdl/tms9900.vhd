@@ -42,14 +42,9 @@ entity tms9900 is
 	data_out : out  STD_LOGIC_VECTOR (15 downto 0);
 	rd 		: out  STD_LOGIC;		-- workin read with Pepino 40ns
 	wr 		: out  STD_LOGIC;		-- working write with Pepino 60ns
-	-- ready 	: in  STD_LOGIC;		-- NOT USED: memory read input, a high terminates a memory cycle 
+	ready 	: in  STD_LOGIC;		-- memory read and write input, a high terminates a memory cycle 
 	iaq 		: out  STD_LOGIC;
 	as 		: out  STD_LOGIC;		-- address strobe, when high new address is valid, starts a memory cycle
---	test_out : out STD_LOGIC_VECTOR (15 downto 0);
---	alu_debug_out  : out STD_LOGIC_VECTOR (15 downto 0); -- ALU debug bus
---	alu_debug_oper : out STD_LOGIC_VECTOR(3 downto 0);
-	alu_debug_arg1 :  out STD_LOGIC_VECTOR (15 downto 0);
-	alu_debug_arg2 :  out STD_LOGIC_VECTOR (15 downto 0);	
 	cpu_debug_out : out STD_LOGIC_VECTOR (95 downto 0);	
 	int_req	: in STD_LOGIC;		-- interrupt request, active high
 	ic03     : in STD_LOGIC_VECTOR(3 downto 0);	-- interrupt priority for the request, 0001 is the highest (0000 is reset)
@@ -219,41 +214,28 @@ begin
 				alu_out <= '0' & arg1;
 			when alu_load2 =>
 				alu_out <= '0' & arg2;
---				alu_debug_oper <= x"1";
 			when alu_add =>
 				alu_out <= std_logic_vector(unsigned('0' & arg1) + unsigned('0' & arg2));
---				alu_debug_oper <= x"2";
 			when alu_or =>
 				alu_out <= '0' & arg1 or '0' & arg2;
---				alu_debug_oper <= x"3";
 			when alu_and =>
 				alu_out <= '0' & arg1 and '0' & arg2;
---				alu_debug_oper <= x"4";
 			when alu_sub =>
-				-- t := std_logic_vector(unsigned(arg1) - unsigned(arg2));
-				-- alu_out <= t(15) & t;		-- BUGBUG I wonder if this is right for carry generation?
 				alu_out <= std_logic_vector(unsigned('0' & arg1) - unsigned('0' & arg2));
---				alu_debug_oper <= x"5";
 			when alu_compare =>
 				-- this is just the same code as for subtract
 				alu_out <= std_logic_vector(unsigned('0' & arg1) - unsigned('0' & arg2));
 			when alu_and_not =>
 				alu_out <= '0' & arg1 and not ('0' & arg2);
---				alu_debug_oper <= x"6";
 			when alu_xor =>
 				alu_out <= '0' & arg1 xor '0' & arg2;
---				alu_debug_oper <= x"7";
 			when alu_coc => -- compare ones corresponding
 				alu_out <= ('0' & arg1 xor ('0' & arg2)) and ('0' & arg1);
---				alu_debug_oper <= x"7";		-- BUGBUG show still debug code 7 as in xor
 			when alu_czc => -- compare zeros corresponding
 				alu_out <= ('0' & arg1 xor not ('0' & arg2)) and ('0' & arg1);
---				alu_debug_oper <= x"7";		-- BUGBUG show still debug code 7 as in xor
 			when alu_swpb2 =>
 				alu_out <= '0' & arg2(7 downto 0) & arg2(15 downto 8); -- swap bytes of arg2
---				alu_debug_oper <= x"8";
 			when alu_abs => -- compute abs value of arg2
---				alu_debug_oper <= x"9";
 				if arg2(15) = '0' then
 					alu_out <= '0' & arg2;
 				else
@@ -261,25 +243,16 @@ begin
 					alu_out <= std_logic_vector(unsigned(arg1(15) & arg1) - unsigned(arg2(15) & arg2));
 				end if;
 			when alu_sla =>
---				alu_debug_oper <= x"A";
 				alu_out <= arg2 & '0';
 			when alu_sra =>
---				alu_debug_oper <= x"B";
 				alu_out <= arg2(0) & arg2(15) & arg2(15 downto 1);
 			when alu_src =>
---				alu_debug_oper <= x"C";
 				alu_out <= arg2(0) & arg2(0) & arg2(15 downto 1);
 			when alu_srl =>
---				alu_debug_oper <= x"D";
 				alu_out <= arg2(0) & '0' & arg2(15 downto 1);
 		end case;			
 	end process;
 	alu_result <= alu_out(15 downto 0);
--- alu_debug_out <= alu_out(15 downto 0);
---	alu_debug_arg1 <= arg1;
---	alu_debug_arg2 <= arg2;
-	alu_debug_arg1 <= alu_debug_dst_arg;
-	alu_debug_arg2 <= alu_debug_src_arg;
 	
 	-- ST0 ST1 ST2 ST3 ST4 ST5
 	-- L>  A>  =   C   O   P
@@ -382,11 +355,11 @@ begin
 						end if;
 					when do_read2 => cpu_state <= do_read3;
 					when do_read3 => 
-						-- if ready='1' then 
+						if ready='1' then 
 							cpu_state <= cpu_state_next;
 							rd <= '0';
 							rd_dat <= data_in;
-						-- end if;
+						end if;
 					
 					-- write cycles --
 					when do_write =>
@@ -420,10 +393,10 @@ begin
 						end if;
 					when do_write2 => cpu_state <= do_write3;
 					when do_write3 => 
-						-- if ready='1' then
+						if ready='1' then
 							cpu_state <= cpu_state_next; -- do_write4; -- cpu_state_next;
 							wr <= '0';
-						-- end if;
+						end if;
 					----------------
 					-- operations --
 					----------------
