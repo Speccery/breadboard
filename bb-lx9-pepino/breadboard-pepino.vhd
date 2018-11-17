@@ -8,6 +8,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx primitives in this code.
+library UNISIM;
+use UNISIM.VComponents.all;
+
 entity system is
 port (
    CLKIN    : in  std_logic;  -- 50Mhz clock
@@ -15,86 +20,44 @@ port (
    XOUT     : out std_logic;  -- serial out
    RIN      : in  std_logic;  -- serial in
 	LED		: out std_logic_vector(7 downto 0); -- LEDs
+	
+	-- Pepino specific ports
+	SRAM_CE0 : out std_logic := '1';
+	SRAM_CE1 : out std_logic := '1';
+	SRAM_WE  : out std_logic := '1';
+	SRAM_OE  : out std_logic := '1';
+	SRAM_BE  : out std_logic_vector(3 downto 0);
+	SRAM_ADR : out std_logic_vector(18 downto 0);
+	SRAM_DAT : inout std_logic_vector(31 downto 0);
+	
+	ALATCH		: out std_logic := '0';
+	BUS_OE_n    : out std_logic := '0';
+	CTRL_RD_n   : out std_logic := '0';
+	RD_n        : out std_logic := '0';
+	CTRL_CP     : out std_logic := '0';
+	BUSDIR      : out std_logic := '0';
+	INDATA		: inout std_logic_vector(15 downto 0) := (others => 'Z');
+	DEBUG1		: in std_logic;
+	DEBUG2		: in std_logic;
+	MEM_n_ext	: in std_logic;
+	WE_n_ext		: in std_logic;
+	
+	VGA_RED		: out std_logic_vector(2 downto 0);
+	VGA_GREEN	: out std_logic_vector(2 downto 0);
+	VGA_BLUE		: out std_logic_vector(1 downto 0);
+	VGA_HSYNC 	: out std_logic := '0';
+	VGA_VSYNC 	: out std_logic := '0';
+		
+	AUDIO_L		: out std_logic := '0';
+	AUDIO_R		: out std_logic := '0';
+	
+	
    TEST     : out std_logic   -- serial out
    );
 end system;
 
 architecture system_arch of system is
 
-   -- Declare components
-   --
-   
-   component rom is
-   port (
-      CLK  : in  std_logic;
-      nCS  : in  std_logic;
-      -- ADDR : in  std_logic_vector (11 downto 0);	-- EVM-BUG
-		ADDR : in  std_logic_vector (14 downto 0);
-      DO   : out std_logic_vector (15 downto 0)
-      );
-   end component;
-
-   component ram is
-   port (
-      CLK  : in  std_logic;
-      nCS  : in  std_logic;
-      nWE  : in  std_logic;
-      ADDR : in  std_logic_vector (13 downto 0);
-      DI   : in  std_logic_vector (15 downto 0);
-      DO   : out std_logic_vector (15 downto 0)
-      );
-   end component;
-
-   component tms9902
-   port(
-      CLK    : in   std_logic;
-      nRTS   : out  std_logic;
-      nDSR   : in   std_logic;
-      nCTS   : in   std_logic;
-      nINT   : out  std_logic;
-      nCE    : in   std_logic;
-      CRUOUT : in   std_logic;
-      CRUIN  : out  std_logic;
-      CRUCLK : in   std_logic;
-      XOUT   : out  std_logic;
-      RIN    : in   std_logic;
-      S      : in   std_logic_vector(4 downto 0)
-      );
-   end component;
-
---   component tms9900
---   port(
---      CLK            : in   std_logic;
---      RESET          : in   std_logic;
---      ADDR_OUT       : out  std_logic_vector(15 downto 0);
---      DATA_IN        : in   std_logic_vector(15 downto 0);
---      DATA_OUT       : out  std_logic_vector(15 downto 0);
---      RD             : out  std_logic;
---      WR             : out  std_logic;
---      IAQ            : out  std_logic;
---      AS             : out  std_logic;
-----      ALU_DEBUG_ARG1 : out  std_logic_vector(15 downto 0);
-----      ALU_DEBUG_ARG2 : out  std_logic_vector(15 downto 0);
---      INT_REQ	      : in   std_logic;		                  -- interrupt request, active high
---      IC03           : in   std_logic_vector(3 downto 0);	-- interrupt priority for the request, 0001 is the highest (0000 is reset)
---      INT_ACK	      : out  std_logic;		                  -- does not exist on the tms9900, when high cpu vectors to interrupt
---      CPU_DEBUG_OUT  : out  std_logic_vector (95 downto 0);	
---      CRUIN		      : in   std_logic;
---      CRUOUT         : out  std_logic;
---      CRUCLK         : out  std_logic;
---      HOLD           : in   std_logic;
---      HOLDA          : out  std_logic;
---      WAITS          : in   std_logic_vector(7 downto 0);
---      STUCK          : out  std_logic
---      );
---   end component;
-	
-	component xc6pll
-    Port ( CLKIN 		: in  STD_LOGIC;
-			  CLKIN_BUF : out STD_LOGIC;
-           CLKOUT 	: out  STD_LOGIC;
-           LOCKED 	: out  STD_LOGIC);
-	end component;
 
    -- buses and wires on the breadboard
    --
@@ -120,13 +83,13 @@ architecture system_arch of system is
 	
 	signal clk 			: std_logic;
 	signal clkin_buf	: std_logic;	-- buffered input clock 50MHz
+	
 begin
-
-	mypll: xc6pll port map(CLKIN => CLKIN, CLKIN_BUF => clkin_buf, CLKOUT => CLK, LOCKED => open);
+	mypll: entity work.xc6pll port map(CLKIN => CLKIN, CLKIN_BUF => clkin_buf, CLKOUT => CLK, LOCKED => open);
 
 
    -- instantiate & connect up the ROM 'chip'
-   rom1: rom port map (
+   rom1: entity work.rom port map (
       CLK  => CLK,
       nCS  => rom_nCS,
       ADDR => ADDR_OUT(15 downto 1),
@@ -134,7 +97,7 @@ begin
    );
 
    -- instantiate & connect up the RAM 'chip'
-   ram1: ram port map (
+   ram1: entity work.ram port map (
       CLK  => CLK,
       nCS  => ram_nCS,
       nWE  => nWE,
@@ -144,7 +107,7 @@ begin
    );
 
    -- instantiate & connect up the 9902 UART
-   acc: tms9902 port map (
+   acc: entity work.tms9902 port map (
       -- CLK    => clkin_buf,	-- using 50MHz clock
 		CLK    => CLK,	-- 160MHz clock
       nRTS   => rts_to_cts,
@@ -200,5 +163,18 @@ begin
 	XOUT <= xout2; -- to RS232 port
 	
 	LED <= ADDR_OUT(15 downto 8);
+	
+	VGA_RED  <= "000";
+	VGA_BLUE <= "00";
+	VGA_GREEN <= "000";
+	VGA_HSYNC <= '0';
+	VGA_VSYNC <= '0';
+	SRAM_ADR <= (others => '0');
+	SRAM_BE <= "1111";
+	SRAM_DAT <= "ZZZZZZZZ" & "ZZZZZZZZ" & "ZZZZZZZZ" & "ZZZZZZZZ";
+	SRAM_CE0 <= '1';
+	SRAM_CE1 <= '1';
+	SRAM_OE <= '1';
+	SRAM_WE <= '1';
 
 end system_arch;

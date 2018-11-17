@@ -165,7 +165,7 @@
       <outfile xil_pn:name="system_pad.txt"/>
       <outfile xil_pn:name="system_par.xrpt"/>
     </transform>
-    <transform xil_pn:end_ts="1527312175" xil_pn:in_ck="-712452453344485318" xil_pn:name="TRANEXT_bitFile_spartan6" xil_pn:prop_ck="5341574683187206424" xil_pn:start_ts="1527312160">
+    <transform xil_pn:end_ts="1538891588" xil_pn:in_ck="-712452453344485318" xil_pn:name="TRANEXT_bitFile_spartan6" xil_pn:prop_ck="5341574683187206424" xil_pn:start_ts="1538891573">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <outfile xil_pn:name="_xmsgs/bitgen.xmsgs"/>
@@ -177,14 +177,23 @@
       <outfile xil_pn:name="webtalk.log"/>
       <outfile xil_pn:name="webtalk_pn.xml"/>
     </transform>
-    <transform xil_pn:end_ts="1527308526" xil_pn:in_ck="-712452453344498172" xil_pn:name="TRAN_impactProgrammingTool" xil_pn:prop_ck="8899617615163360588" xil_pn:start_ts="1527308525">
+    <transform xil_pn:end_ts="1538891526" xil_pn:in_ck="-712452453344498172" xil_pn:name="TRAN_impactProgrammingTool" xil_pn:prop_ck="8899617615163360588" xil_pn:start_ts="1538891526">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForInputs"/>
       <status xil_pn:value="InputChanged"/>
       <outfile xil_pn:name="ise_impact.cmd"/>
     </transform>
-    <transform xil_pn:end_ts="1526357562" xil_pn:in_ck="-712452453344498172" xil_pn:name="TRAN_configureTargetDevice" xil_pn:prop_ck="-7848064065724118957" xil_pn:start_ts="1526357562">
+    <transform xil_pn:end_ts="1538891502" xil_pn:in_ck="-712452453344498172" xil_pn:name="TRAN_configureTargetDevice" xil_pn:prop_ck="-7848064065724118957" xil_pn:start_ts="1538891502">
+      <status xil_pn:value="SuccessfullyRun"/>
+      <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForInputs"/>
+      <status xil_pn:value="OutOfDateForOutputs"/>
+      <status xil_pn:value="InputChanged"/>
+      <status xil_pn:value="OutputChanged"/>
+      <outfile xil_pn:name="ise_impact.cmd"/>
+    </transform>
+    <transform xil_pn:end_ts="1538891516" xil_pn:in_ck="-712452453344498172" xil_pn:name="TRAN_analyzeDesignUsingChipscope" xil_pn:prop_ck="8887780353975086060" xil_pn:start_ts="1538891516">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForInputs"/>

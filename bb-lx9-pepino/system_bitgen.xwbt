@@ -1,0 +1,8 @@
+INTSTYLE=ise
+INFILE=W:\Omat\trunk\breadboard\bb-lx9-pepino\system.ncd
+OUTFILE=W:\Omat\trunk\breadboard\bb-lx9-pepino\system.bit
+FAMILY=Spartan6
+PART=xc6slx9-2ftg256
+WORKINGDIR=W:\Omat\trunk\breadboard\bb-lx9-pepino
+LICENSE=WebPack
+USER_INFO=211059439_0_0_754
