@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2018-10-07T08:50:59</DateModified>
+  <DateModified>2019-03-01T16:10:16</DateModified>
   <ModuleName>system</ModuleName>
   <SummaryTimeStamp>2018-05-20T10:44:32</SummaryTimeStamp>
-  <SavedFilePath>E:/Dropbox/Omat/trunk/breadboard/bb-lx16/iseconfig/system.xreport</SavedFilePath>
-  <ImplementationReportsDirectory>E:/Dropbox/Omat/trunk/breadboard/bb-lx16/work\</ImplementationReportsDirectory>
+  <SavedFilePath>/home/ise/vmshare/breadboard/bb-lx16/iseconfig/system.xreport</SavedFilePath>
+  <ImplementationReportsDirectory>/home/ise/vmshare/breadboard/bb-lx16/work/</ImplementationReportsDirectory>
   <DateInitialized>2018-05-02T18:39:38</DateInitialized>
   <EnableMessageFiltering>false</EnableMessageFiltering>
  </header>

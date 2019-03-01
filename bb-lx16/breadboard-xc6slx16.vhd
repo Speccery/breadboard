@@ -10,11 +10,11 @@ use ieee.numeric_std.all;
 
 entity system is
 generic (
-	use_sdram : boolean := false	-- SDRAM as main memory
+	use_sdram : boolean := true	-- SDRAM as main memory
 );
 port (
    CLKIN    : in  std_logic;  -- 50Mhz clock
-   RESET_n  : in  std_logic;  -- reset (SW1)
+   RESET_n  : in  std_logic;  -- reset (SW3), middle button
 	LED1     : out std_logic;
 	LED3     : out std_logic;
 	
@@ -57,10 +57,11 @@ architecture system_arch of system is
    signal CRUOUT   : std_logic;
    signal CRUCLK   : std_logic;
 
-   signal ram_nCS : std_logic;
-   signal rom_nCS : std_logic;
+   signal ram_nCS   : std_logic;
+   signal rom_nCS   : std_logic;
 	signal SDRAM_nCS : std_logic;
-   signal acc_nCE : std_logic;
+   signal acc_nCE   : std_logic;
+	signal debug_nCS : std_logic;
 
    signal DO1 : std_logic_vector(15 downto 0);
    signal DO2 : std_logic_vector(15 downto 0);
@@ -138,14 +139,19 @@ architecture system_arch of system is
 	--
 	signal sdram_data_reg	: std_logic_vector(15 downto 0); -- capture the data output from SDRAM here
 	signal cmd_enable_d 		: std_logic;
-	signal read_pending_d, read_pending_q : std_logic;
-	signal write_pending_d, write_pending_q : std_logic;
-	signal sdram_ready_d, sdram_ready_q   : std_logic;
-	signal sdram_read_count_d, sdram_read_count_q : unsigned(7 downto 0);
+--	signal read_pending_d,      read_pending_q      : std_logic;
+--	signal write_pending_d,     write_pending_q     : std_logic;
+	signal sdram_cycle_ready_d, sdram_cycle_ready_q : std_logic;
+--	signal sdram_read_count_d,  sdram_read_count_q : unsigned(7 downto 0);
 	signal WR_q, RD_q 	   : std_logic;
+	type sdram_states is ( idle, read_cycle, write_cycle, wait_read_end,  wait_write_end);
+	signal sdram_cycle_state_q, sdram_cycle_state_d : sdram_states := idle;
 	
 	signal cmd_ready_counter : unsigned(25 downto 0) := (others => '0');
 	signal cpu_reset			: std_logic;
+	
+	signal debug_capt1, debug_capt2, debug_capt3		: std_logic_vector(31 downto 0);
+	signal sdr_data_out_ready_last : std_logic;
 
 begin
 
@@ -259,19 +265,18 @@ begin
 	
 	process(ADDR_OUT)
 	begin
+		ram_nCS <= '1';
+		sdram_nCS <= '1';
+		debug_nCS <= '1';
 		if use_sdram then
-			ram_nCS   <= '1'; 				-- Internal block RAM never used.
 			sdram_nCS <= not ADDR_OUT(15);
 		else
 			if ADDR_OUT(15 downto 8) = x"F1" then
 				sdram_nCS <= '0';
-				ram_nCS <= '1';
+			elsif ADDR_OUT(15 downto 8) = x"F2" then
+				debug_nCS <= '0';
 			elsif ADDR_OUT(15)='1' then
-				sdram_nCS <= '1';
 				ram_nCS <= '0';
-			else
-				sdram_nCS <= '1';
-				ram_nCS <= '1';
 			end if;
 		end if;
 	end process;
@@ -279,9 +284,15 @@ begin
    -- define the DATA_IN muxer (no tri-state on a FPGA)
    DATA_IN <= DO1 when rom_nCS='0' else
               DO2 when ram_nCS='0' else
+				  sdram_data_reg when sdram_nCS='0' else
 				  -- Line below is for debugging. Requires block RAM as working RAM.
 				  -- x"76" & std_logic_vector(sdram_read_count_q) when sdram_nCS='0' and ADDR_OUT(2 downto 1)="11" else
-				  sdram_data_reg when sdram_nCS='0' else
+				  debug_capt1(15 downto  0) when debug_nCS='0' and ADDR_OUT(3 downto 1) = "000" else
+				  debug_capt1(31 downto 16) when debug_nCS='0' and ADDR_OUT(3 downto 1) = "001" else
+				  debug_capt2(15 downto  0) when debug_nCS='0' and ADDR_OUT(3 downto 1) = "010" else
+				  debug_capt2(31 downto 16) when debug_nCS='0' and ADDR_OUT(3 downto 1) = "011" else
+				  debug_capt3(15 downto  0) when debug_nCS='0' and ADDR_OUT(3 downto 1) = "100" else
+				  debug_capt3(31 downto 16) when debug_nCS='0' and ADDR_OUT(3 downto 1) = "101" else
               x"0000";
 
 	XOUT <= xout2; -- to RS232 port
@@ -298,88 +309,148 @@ begin
 	cmd_byte_enable <= "1111"; -- "0011"; -- when ADDR_OUT(1)='0' else "1100";
 	cmd_wr <= WR;
 	
-	MEM_READY <= '1' when ram_nCS='0' or rom_nCS='0' else sdram_ready_q;
-	
-	process(cmd_ready, sdram_nCS, WR, WR_q, RD, RD_q, sdr_data_out_ready, 
-		sdram_ready_q, sdram_read_count_q, read_pending_q, write_pending_q)
-	variable sdr_cmd_enable   : std_logic;
-	variable sdr_read_pending : std_logic;
-	variable sdr_write_pending : std_logic;
-	variable ready : std_logic;
-	variable count : unsigned(7 downto 0);
-	begin
-		sdr_cmd_enable := '0';
-		sdr_read_pending := read_pending_q;
-		sdr_write_pending := write_pending_q;
-		ready := sdram_ready_q;
-		count := sdram_read_count_q;
-		
-		if sdr_read_pending='1' then
-			count := sdram_read_count_q + 1;
-		end if;
+	MEM_READY <= '1' when ram_nCS='0' or rom_nCS='0' or debug_nCS='0' else sdram_cycle_ready_q;
 
-		if sdr_data_out_ready='1' and read_pending_q='1' then
-			sdr_read_pending := '0';
-			ready := '1';
-		end if;
+	process(sdram_cycle_state_q, sdram_nCS, cmd_ready, RD, WR, sdr_data_out_ready)
+	begin
+		cmd_enable_d <= '0';
+		sdram_cycle_state_d <= sdram_cycle_state_q;	-- init with previous state 
+		sdram_cycle_ready_d <= sdram_cycle_ready_q;	-- init with previous state 
 		
-		if sdr_write_pending='1' and cmd_ready='1' then
-			-- write was pending, during that pending cmd_ready became high again
-			-- i.e. the controller is ready for a new command. done with write.
-			sdr_write_pending := '0';	
-			ready := '1';
-		end if;
-		
-		-- if sdram_nCS='1' then
-		if RD='0' and WR='0' then
-			ready := '0';	-- by default sdram is not ready.
-		end if;
-		
-		if sdram_nCS='0' and cmd_ready='1' then
-			-- SDRAM access required and the controller is ready to go
-			if WR='1' and WR_q='0' then
-				-- ready := '1';				-- release CPU immediately for writes
-				sdr_write_pending := '1';
-				sdr_cmd_enable := '1';	-- tell SDRAM controller to start
-			elsif RD='1' and RD_q='0' then
-				sdr_cmd_enable := '1';	-- tell SDRAM controller to start
-				sdr_read_pending := '1';
-				count := x"00";
-			end if;
-		end if;
-		
-		cmd_enable_d   <= sdr_cmd_enable;
-		read_pending_d <= sdr_read_pending;
-		write_pending_d <= sdr_write_pending;
-		sdram_ready_d  <= ready;
-		sdram_read_count_d <= count;
+		case sdram_cycle_state_q is 
+			when idle =>
+				sdram_cycle_ready_d <= '0';			
+				if sdram_nCS='0' and cmd_ready='1' then
+					-- controller read for new commands and address matches SDRAM
+					if RD='1' then
+						-- CPU wants to read something.
+						cmd_enable_d <= '1';
+						sdram_cycle_state_d <= read_cycle;
+					elsif WR='1' then
+						-- CPU wants to write something.
+						cmd_enable_d <= '1';
+						sdram_cycle_state_d <= write_cycle;
+					end if;
+				end if;
+			when read_cycle =>
+				if sdr_data_out_ready='1' then
+					sdram_cycle_ready_d <= '1';		-- this terminates memory cycle from CPU
+					sdram_cycle_state_d <= wait_read_end;
+				end if;
+			when wait_read_end =>
+				if RD='0' then
+					sdram_cycle_state_d <= idle;
+				end if;
+			when write_cycle =>
+				if cmd_ready='1' then
+					sdram_cycle_ready_d <= '1';		-- this terminates memory cycle from CPU
+					sdram_cycle_state_d <= wait_write_end;
+				end if;
+			when wait_write_end =>
+				if WR='0' then
+					sdram_cycle_state_d <= idle;
+				end if;
+		end case;
 	end process;
 	
-	process(clk, RESET)
+	
+--	process(cmd_ready, sdram_nCS, WR, WR_q, RD, RD_q, sdr_data_out_ready, 
+--		sdram_cycle_ready_q, sdram_read_count_q, read_pending_q, write_pending_q)
+--	variable sdr_cmd_enable   : std_logic;
+--	variable sdr_read_pending : std_logic;
+--	variable sdr_write_pending : std_logic;
+--	variable ready : std_logic;
+--	variable count : unsigned(7 downto 0);
+--	begin
+--		sdr_cmd_enable := '0';
+--		sdr_read_pending := read_pending_q;
+--		sdr_write_pending := write_pending_q;
+--		ready := sdram_cycle_ready_q;
+--		count := sdram_read_count_q;
+--		
+--		if sdr_read_pending='1' then
+--			count := sdram_read_count_q + 1;
+--		end if;
+--
+--		if sdr_data_out_ready='1' and read_pending_q='1' then
+--			sdr_read_pending := '0';
+--			ready := '1';
+--		end if;
+--		
+--		if sdr_write_pending='1' and cmd_ready='1' then
+--			-- write was pending, during that pending cmd_ready became high again
+--			-- i.e. the controller is ready for a new command. done with write.
+--			sdr_write_pending := '0';	
+--			ready := '1';
+--		end if;
+--		
+--		-- if sdram_nCS='1' then
+--		if RD='0' and WR='0' then
+--			ready := '0';	-- by default sdram is not ready.
+--		end if;
+--		
+--		if sdram_nCS='0' and cmd_ready='1' then
+--			-- SDRAM access required and the controller is ready to go
+--			if WR='1' and WR_q='0' then
+--				-- ready := '1';				-- release CPU immediately for writes
+--				sdr_write_pending := '1';
+--				sdr_cmd_enable := '1';	-- tell SDRAM controller to start
+--			elsif RD='1' and RD_q='0' then
+--				sdr_cmd_enable := '1';	-- tell SDRAM controller to start
+--				sdr_read_pending := '1';
+--				count := x"00";
+--			end if;
+--		end if;
+--		
+--		cmd_enable_d   <= sdr_cmd_enable;
+--		read_pending_d <= sdr_read_pending;
+--		write_pending_d <= sdr_write_pending;
+--		sdram_cycle_ready_d  <= ready;
+--		sdram_read_count_d <= count;
+--	end process;
+	
+	process(clk)
 	begin
-		if RESET='1' then
-			cmd_enable     	 <= '0';
-			read_pending_q 	 <= '0';
-			write_pending_q    <= '0';
-			sdram_ready_q      <= '0';
-			sdram_read_count_q <= x"00";
-			cpu_reset 			 <= '1';	-- CPU reset on
-		elsif rising_edge(clk) then
-			cmd_enable     	 <= cmd_enable_d;
-			read_pending_q 	 <= read_pending_d;
-			write_pending_q    <= write_pending_d;
-			sdram_ready_q      <= sdram_ready_d;
-			sdram_read_count_q <= sdram_read_count_d;
-			if sdr_data_out_ready='1' then
-				sdram_data_reg <= sdr_data_out(31 downto 16);-- sdr_data_out(15 downto 0);
+		if rising_edge(clk) then 
+			if RESET='1' then
+				cmd_enable     	 <= '0';
+	--			read_pending_q 	 <= '0';
+	--			write_pending_q    <= '0';
+				sdram_cycle_ready_q      <= '0';
+	--			sdram_read_count_q <= x"00";
+				cpu_reset 			 <= '1';	-- CPU reset on
+				sdram_cycle_state_q <= idle;
+				sdr_data_out_ready_last <= '0';
+			else
+				cmd_enable     	 <= cmd_enable_d;
+	--			read_pending_q 	 <= read_pending_d;
+	--			write_pending_q    <= write_pending_d;
+				sdram_cycle_ready_q      <= sdram_cycle_ready_d;
+	--			sdram_read_count_q <= sdram_read_count_d;
+				sdram_cycle_state_q <= sdram_cycle_state_d;
+				
+				
+				-- debugging stuff
+				sdr_data_out_ready_last <= sdr_data_out_ready;
+				if sdr_data_out_ready='1' and sdr_data_out_ready_last='0' then
+					debug_capt2 <= sdr_data_out;
+				end if;
+				if sdr_data_out_ready='0' and sdr_data_out_ready_last='1' then
+					debug_capt3 <= sdr_data_out;
+				end if;
+				
+				if sdr_data_out_ready='1' then
+					sdram_data_reg <= sdr_data_out(31 downto 16);-- sdr_data_out(15 downto 0);
+					debug_capt1 <= sdr_data_out;
+				end if;
+				if cmd_ready='1' then
+					-- release CPU only after SDRAM controller is ready. This helps
+					-- debugging the signals on an oscilloscope.
+					cpu_reset <= '0';	
+				end if;
+				WR_q <= WR;
+				RD_q <= RD;
 			end if;
-			if cmd_ready='1' then
-				-- release CPU only after SDRAM controller is ready. This helps
-				-- debugging the signals on an oscilloscope.
-				cpu_reset <= '0';	
-			end if;
-			WR_q <= WR;
-			RD_q <= RD;
 		end if;
 	end process;
 	
@@ -392,12 +463,17 @@ begin
 		end if;
 	end process;
 	
-	LED1 <= std_logic(cmd_ready_counter(cmd_ready_counter'length-1));
-	LED3 <= read_pending_q;
+	LED1 <= '1' when sdram_cycle_state_q /= idle else '0'; -- std_logic(cmd_ready_counter(cmd_ready_counter'length-1));
+	LED3 <= '1' when sdram_cycle_state_q = wait_read_end else '0';
 	
 	RXDEBUG(0) <= sdram_nCS;
-	RXDEBUG(1) <= sdram_ready_q; -- cmd_enable;
+	RXDEBUG(1) <= sdram_cycle_ready_q; -- cmd_enable;
 	RXDEBUG(2) <= cmd_ready; -- sdr_data_out_ready; -- read_pending_q;
-	RXDEBUG(3) <= WR;
+	RXDEBUG(3) <= cmd_enable;
+	RXDEBUG(4) <= RD;
+	RXDEBUG(5) <= sdr_data_out_ready;
+	RXDEBUG(6) <= '1' when sdram_cycle_state_q = read_cycle    else '0';
+	RXDEBUG(7) <= '1' when sdram_cycle_state_q = wait_read_end else '0';
+
 
 end system_arch;

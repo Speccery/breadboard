@@ -1,8 +1,8 @@
 INTSTYLE=ise
-INFILE=E:\Dropbox\Omat\trunk\breadboard\bb-lx16\work\system.ncd
-OUTFILE=E:\Dropbox\Omat\trunk\breadboard\bb-lx16\work\system.bit
+INFILE=/home/ise/vmshare/breadboard/bb-lx16/work/system.ncd
+OUTFILE=/home/ise/vmshare/breadboard/bb-lx16/work/system.bit
 FAMILY=Spartan6
 PART=xc6slx16-2ftg256
-WORKINGDIR=E:\Dropbox\Omat\trunk\breadboard\bb-lx16\work
-LICENSE=WebPack
-USER_INFO=211059439_0_0_754
+WORKINGDIR=/home/ise/vmshare/breadboard/bb-lx16/work
+LICENSE=ISE
+USER_INFO=8416_11442_1478797146_620
