@@ -16,6 +16,8 @@ A very bare bones board.
 ![XC6SLX9 picture](https://user-images.githubusercontent.com/18168418/40271371-22704894-5ba5-11e8-9301-0d9d349e5e0e.jpg)
 
 ## Xilinx XC6SLX16 board with an option daughter board
+Updated: 2019-03-02 Made a quick updae, now the SDRAM is being used as the RAM for the design. I had to slow down the system to 50MHz to get this working properly. The design could be changed so that there would be two clocks, one for the main design and another for the SDRAM controller.
+
 As of writing 2018-05-19 this board can be bought with the daughther board for around 40 euros. A very good deal.
 * Xilinx XC6SXL16 chip
 * 50 MHz oscillator
