@@ -293,16 +293,10 @@ begin
 
 	XOUT <= xout2; -- to RS232 port
 	
-	-- interface logic to SDRAM
-	-- EPEP BUGBUG: Currently it seems that data written to cmd_data_in(15 downto 0)
-	--              surfaces at sdr_data_out(31 downto 16) when reading....
-	--              So I am currently then using the memory controller in this mode. 
-	--					 It probably wastes half of the RAM. Let's see later with more energy.
-	--              Originally I tried below: cmd_data_in <= DATA_OUT & DATA_OUT;
-	--					 Which works when reading from sdr_data_out(31 downto 16).
-	cmd_data_in <= x"DEAD" & DATA_OUT; 
-	cmd_address <= "000000" & ADDR_OUT(15 downto 1);	-- 32-bit interface, now testing with 16 bits
-	cmd_byte_enable <= "1111"; -- "0011"; -- when ADDR_OUT(1)='0' else "1100";
+	-- interface logic to SDRAM, 32-bit bus interfacing to SDRAM
+	cmd_data_in <= DATA_OUT & DATA_OUT; 	-- broadcast CPU write data to both upper and lower part of 32-bit word
+	cmd_address <= "0000000" & ADDR_OUT(15 downto 2);	-- 32-bit interface
+	cmd_byte_enable <= "0011" when ADDR_OUT(1)='0' else "1100";
 	cmd_wr <= WR;
 	
 	MEM_READY <= '1' when ram_nCS='0' or rom_nCS='0' or debug_nCS='0' else sdram_cycle_ready_q;
@@ -376,8 +370,11 @@ begin
 				end if;
 				
 				if sdr_data_out_ready='1' then
-					-- sdram_data_reg <= sdr_data_out(31 downto 16);-- This worked when the clock was 100MHz, but it is wrong
-					sdram_data_reg <= sdr_data_out(15 downto 0);	-- the correct way to capture data, testing at 66MHz
+					if ADDR_OUT(1)='0' then
+						sdram_data_reg <= sdr_data_out(15 downto 0);	
+					else
+						sdram_data_reg <= sdr_data_out(31 downto 16);	
+					end if;
 					debug_capt1 <= sdr_data_out;
 				end if;
 				if cmd_ready='1' then
