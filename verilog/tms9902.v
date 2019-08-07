@@ -7,11 +7,14 @@
 // This source code is public domain.
 //
 
-module tms9902 (CLK, nRTS, nDSR, nCTS, nINT, nCE, CRUOUT, CRUIN, CRUCLK, XOUT, RIN, S);
+module tms9902 
+	#(div_to_1MHz = 50) 
+	(CLK, nRTS, nDSR, nCTS, nINT, nCE, CRUOUT, CRUIN, CRUCLK, XOUT, RIN, S, DBG);
 
   output nRTS, nINT, CRUIN, XOUT;
   input  CLK, nDSR, nCTS, nCE, CRUOUT, CRUCLK, RIN;
   input  [4:0] S;
+  output [2:0] DBG;
 
   wire   nRTS, XOUT, nINT, CRUIN;
   wire   CLK, nDSR, nCTS, nCE, CRUOUT, CRUCLK, RIN;
@@ -25,18 +28,24 @@ module tms9902 (CLK, nRTS, nDSR, nCTS, nINT, nCE, CRUOUT, CRUIN, CRUCLK, XOUT, R
   // CLOCK DIVIDER
   // ==========================================================================
 
-  `define MHz 100 // EP Changed this to 100MHz from 3
+  // `define MHz 100 // EP Changed this to 100MHz from 3
   reg    [7:0] clkctr_q = 0, clkctr_d;
   wire   bitclk;
   
   assign bitclk = (clkctr_q==0);
+  
+  assign DBG[0] = bitclk;
+  assign DBG[1] = sig_xhbctr_iszero;
+  assign DBG[2] = XOUT;
+  
   
   always @(posedge CLK) clkctr_q = clkctr_d;
   
   always @(clkctr_q)
   begin : clkctr_cmb
     if (clkctr_q==0)
-      clkctr_d = `MHz - 1;
+      // clkctr_d = `MHz - 1;
+		clkctr_d = div_to_1MHz - 1;
     else    
       clkctr_d = clkctr_q - 1;
   end
